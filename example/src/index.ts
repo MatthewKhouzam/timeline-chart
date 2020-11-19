@@ -14,6 +14,7 @@ import { TestDataProvider } from "./test-data-provider";
 import { TimeGraphChartGrid } from "timeline-chart/lib/layer/time-graph-chart-grid";
 import { TimeGraphVerticalScrollbar } from "timeline-chart/lib/layer/time-graph-vertical-scrollbar";
 import { TimeGraphChartArrows } from "timeline-chart/lib/layer/time-graph-chart-arrows";
+import { TimeGraphChartAnnotations } from "timeline-chart/lib/layer/time-graph-chart-annotations";
 
 const styleConfig = {
     mainWidth: 1000,
@@ -144,6 +145,10 @@ timeGraphChart.registerRowElementMouseInteractions({
         }
     }
 });
+
+const timeGraphChartAnnotations = new TimeGraphChartAnnotations('timeGraphChartAnnotations', rowController);
+timeGraphChartContainer.addLayer(timeGraphChartAnnotations);
+timeGraph.rows.forEach(row => timeGraphChartAnnotations.addAnnotations(row.annotations));
 
 const timeGraphChartArrows = new TimeGraphChartArrows('timeGraphChartArrows', rowController);
 timeGraphChartContainer.addLayer(timeGraphChartArrows);
