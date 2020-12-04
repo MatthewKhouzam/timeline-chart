@@ -186,7 +186,7 @@ export class TestDataProvider {
         const range = opts.range || { start: 0, end: this.totalLength };
         const resolution = opts.resolution || this.totalLength / this.canvasDisplayWidth;
         timeGraphEntries.model.entries.forEach((entry: any, rowIndex: number): void => {
-            const states: TimelineChart.TimeGraphRowElementModel[] = [];
+            const states: TimelineChart.TimeGraphState[] = [];
             const annotations: TimelineChart.TimeGraphAnnotation[] = [];
             const row = timeGraphStates.model.rows.find(row => row.entryID === entry.id);
             let hasStates = false;
@@ -227,8 +227,7 @@ export class TestDataProvider {
                                     end: annotation.range.end - this.absoluteStart
                                 },
                                 label: '',
-                                data: {type: 'cross, I suppose?',},
-                                sourceId: entry.id
+                                data: {type: 'cross, I suppose?',}
                             });
                         }
                     });

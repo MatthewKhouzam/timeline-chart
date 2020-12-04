@@ -96,7 +96,7 @@ const timeGraphChart = new TimeGraphChart('timeGraphChart', {
             resolution: newResolution
         };
     },
-    rowElementStyleProvider: (model: TimelineChart.TimeGraphRowElementModel) => {
+    rowElementStyleProvider: (model: TimelineChart.TimeGraphState) => {
         const styles: TimeGraphRowElementStyle[] = [
             {
                 color: 0x11ad1b,
@@ -148,7 +148,7 @@ timeGraphChart.registerRowElementMouseInteractions({
 
 const timeGraphChartAnnotations = new TimeGraphChartAnnotations('timeGraphChartAnnotations', rowController);
 timeGraphChartContainer.addLayer(timeGraphChartAnnotations);
-timeGraph.rows.forEach(row => timeGraphChartAnnotations.addAnnotations(row.annotations));
+timeGraph.rows.forEach(row => timeGraphChartAnnotations.addAnnotations(row.annotations, rowController, row.id));
 
 const timeGraphChartArrows = new TimeGraphChartArrows('timeGraphChartArrows', rowController);
 timeGraphChartContainer.addLayer(timeGraphChartArrows);
