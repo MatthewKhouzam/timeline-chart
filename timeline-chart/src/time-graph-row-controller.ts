@@ -4,9 +4,11 @@ export class TimeGraphRowController {
     private _selectedRow: TimelineChart.TimeGraphRowModel | undefined = undefined;
     private _selectedRowIndex: number = -1;
     private _verticalOffset: number;
+    private _pinnedRows: Set<number> = new Set();
     protected selectedRowChangedHandlers: ((row: TimelineChart.TimeGraphRowModel) => void)[] = [];
     protected verticalOffsetChangedHandlers: ((verticalOffset: number) => void)[] = [];
     protected totalHeightChangedHandlers: ((totalHeight: number) => void)[] = [];
+    protected pinnedRowsChangedHandlers: ((pinnedRows: Set<number>) => void)[] = [];
 
     constructor(public rowHeight: number, private _totalHeight: number) {
         this._verticalOffset = 0;
@@ -25,6 +27,10 @@ export class TimeGraphRowController {
 
     protected handleTotalHeightChanged(){
         this.totalHeightChangedHandlers.forEach(h=>h(this._totalHeight));
+    }
+
+    protected handlePinnedRowsChanged() {
+        this.pinnedRowsChangedHandlers.forEach(h => h(this._pinnedRows));
     }
 
     onSelectedRowChangedHandler(handler: (row: TimelineChart.TimeGraphRowModel) => void) {
@@ -57,6 +63,17 @@ export class TimeGraphRowController {
         const index = this.totalHeightChangedHandlers.indexOf(handler);
         if (index > -1) {
             this.totalHeightChangedHandlers.splice(index, 1);
+        }
+    }
+
+    onPinnedRowsChangedHandler(handler: (pinnedRows: Set<number>) => void) {
+        this.pinnedRowsChangedHandlers.push(handler);
+    }
+
+    removePinnedRowsChangedHandler(handler: (pinnedRows: Set<number>) => void) {
+        const index = this.pinnedRowsChangedHandlers.indexOf(handler);
+        if (index > -1) {
+            this.pinnedRowsChangedHandlers.splice(index, 1);
         }
     }
 
@@ -94,5 +111,22 @@ export class TimeGraphRowController {
     set selectedRowIndex(index: number) {
         this._selectedRowIndex = index;
         this.handleSelectedRowChanged();
+    }
+
+    get pinnedRows(): Set<number> {
+        return this._pinnedRows;
+    }
+
+    toggleRowPin(rowId: number) {
+        if (this._pinnedRows.has(rowId)) {
+            this._pinnedRows.delete(rowId);
+        } else {
+            this._pinnedRows.add(rowId);
+        }
+        this.handlePinnedRowsChanged();
+    }
+
+    isPinned(rowId: number): boolean {
+        return this._pinnedRows.has(rowId);
     }
 }

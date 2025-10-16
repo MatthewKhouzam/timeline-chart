@@ -20,6 +20,7 @@ export namespace TimelineChart {
         states: TimeGraphState[]
         annotations: TimeGraphAnnotation[]
         selected?: boolean
+        pinned?: boolean
         readonly data?: { [key: string]: any }
         prevPossibleState: bigint
         nextPossibleState: bigint

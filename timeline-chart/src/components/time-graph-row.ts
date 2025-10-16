@@ -2,6 +2,7 @@ import { TimeGraphComponent, TimeGraphElementPosition, TimeGraphParentComponent,
 import { TimelineChart } from "../time-graph-model";
 import { TimeGraphStateComponent } from "./time-graph-state";
 import { TimeGraphAnnotationComponent } from "./time-graph-annotation";
+import { TimeGraphPinButton } from "./time-graph-pin-button";
 
 export interface TimeGraphRowStyle {
     backgroundColor?: number
@@ -16,14 +17,35 @@ export class TimeGraphRow extends TimeGraphComponent<TimelineChart.TimeGraphRowM
     protected _providedModel: { range: TimelineChart.TimeGraphRange, resolution: number } | undefined;
     protected _rowStateComponents: Map<string, TimeGraphStateComponent> = new Map();
     protected _rowAnnotationComponents: Map<string, TimeGraphAnnotationComponent> = new Map();
+    protected _pinButton: TimeGraphPinButton;
+    protected _onPinToggle?: (rowId: number, pinned: boolean) => void;
 
     constructor(
         id: string,
         protected _options: TimeGraphStyledRect,
         protected _rowIndex: number,
         model?: TimelineChart.TimeGraphRowModel,
-        protected _style: TimeGraphRowStyle = { lineOpacity: 0.5, lineThickness: 1, backgroundOpacity: 0 }) {
+        protected _style: TimeGraphRowStyle = { lineOpacity: 0.5, lineThickness: 1, backgroundOpacity: 0 },
+        onPinToggle?: (rowId: number, pinned: boolean) => void) {
         super(id, undefined, model);
+        this._onPinToggle = onPinToggle;
+        
+        this._pinButton = new TimeGraphPinButton(
+            `${id}-pin`,
+            {
+                position: {
+                    x: this._options.width - 20,
+                    y: this._options.position.y + (this._options.height - 12) / 2
+                }
+            },
+            (pinned: boolean) => {
+                if (this._onPinToggle && this._model) {
+                    this._onPinToggle(this._model.id, pinned);
+                }
+            }
+        );
+        
+        this.addChild(this._pinButton);
     }
 
     get rowIndex(): number {
@@ -48,6 +70,12 @@ export class TimeGraphRow extends TimeGraphComponent<TimelineChart.TimeGraphRowM
                 y: this._options.position.y + (this._options.height / 2)
             }
         });
+        
+        // Update pin button position
+        this._pinButton.position = {
+            x: this._options.width - 20,
+            y: this._options.position.y + (this._options.height - 12) / 2
+        };
     }
 
     get position(): TimeGraphElementPosition {
@@ -125,5 +153,13 @@ export class TimeGraphRow extends TimeGraphComponent<TimelineChart.TimeGraphRowM
 
     set providedModel(providedModel: { range: TimelineChart.TimeGraphRange, resolution: number } | undefined) {
         this._providedModel = providedModel;
+    }
+
+    get pinButton(): TimeGraphPinButton {
+        return this._pinButton;
+    }
+
+    updatePinState(pinned: boolean) {
+        this._pinButton.isPinned = pinned;
     }
 }

@@ -42,6 +42,7 @@ export class TimeGraphChart extends TimeGraphChartLayer {
 
     protected rowIds: number[]; // complete ordered list of rowIds
     protected rowComponents: Map<number, TimeGraphRow> = new Map(); // map of rowId to row component
+    protected pinnedRowComponents: Map<number, TimeGraphRow> = new Map(); // map of pinned rowId to row component
     protected mouseInteractions: TimeGraphMouseInteractions;
     protected selectedStateModel: TimelineChart.TimeGraphState | undefined;
     protected selectedStateChangedHandler: ((el: TimelineChart.TimeGraphState | undefined) => void)[] = [];
@@ -87,6 +88,11 @@ export class TimeGraphChart extends TimeGraphChartLayer {
         private _coarseResolutionFactor = FINE_RESOLUTION_FACTOR) {
         super(id, rowController);
         this.isNavigating = false;
+        
+        // Listen for pinned rows changes
+        this.rowController.onPinnedRowsChangedHandler(() => {
+            this.updateRowPositions();
+        });
     }
 
     adjustZoom(zoomPosition: number | undefined, hasZoomedIn: boolean) {
@@ -417,6 +423,7 @@ export class TimeGraphChart extends TimeGraphChartLayer {
             this.stage.off('mouseupoutside', this._stageMouseUpHandler);
         }
         this.rowComponents.clear();
+        this.pinnedRowComponents.clear();
         super.destroy();
     }
 
@@ -428,9 +435,9 @@ export class TimeGraphChart extends TimeGraphChartLayer {
                 const index = this.rowIds.indexOf(rowId);
                 if (index == -1) {
                     this.rowComponents.delete(rowId);
+                    this.pinnedRowComponents.delete(rowId);
                     this.removeChild(rowComponent);
                 } else {
-                    rowComponent.position.y = this.rowController.rowHeight * index;
                     rowComponent.providedModel = undefined;
                 }
             });
@@ -447,6 +454,8 @@ export class TimeGraphChart extends TimeGraphChartLayer {
                     this.addRow(rowId);
                 }
             });
+            // Update row positions after adding/removing rows
+            this.updateRowPositions();
         }
         const visibleRowIds = this.getVisibleRowIds(VISIBLE_ROW_BUFFER);
         const viewRange = this.unitController.viewRange;
@@ -503,6 +512,8 @@ export class TimeGraphChart extends TimeGraphChartLayer {
     }
 
     protected updateScaleAndPosition() {
+        this.updateRowPositions(); // Update positions first
+        
         this.rowComponents.forEach((rowComponent) => {
             const row = rowComponent.model;
             if (rowComponent) {
@@ -590,13 +601,22 @@ export class TimeGraphChart extends TimeGraphChartLayer {
             },
             width: this.stateController.canvasDisplayWidth,
             height: this.rowController.rowHeight
-        }, rowIndex, row, rowStyle);
+        }, rowIndex, row, rowStyle, this.handlePinToggle);
         rowComponent.displayObject.interactive = true;
         rowComponent.displayObject.on('click', ((e: PIXI.InteractionEvent) => {
             this.selectRow(row);
         }).bind(this));
         this.addChild(rowComponent);
         this.rowComponents.set(rowId, rowComponent);
+        
+        // Set initial pin state
+        if (row?.pinned || this.rowController.isPinned(rowId)) {
+            rowComponent.updatePinState(true);
+            if (row) {
+                row.pinned = true;
+            }
+        }
+        
         if (this.rowController.selectedRowIndex == rowIndex) {
             this.selectRow(row);
         }
@@ -895,16 +915,68 @@ export class TimeGraphChart extends TimeGraphChartLayer {
     private getVisibleRowIds(buffer: number): number[] {
         const visibleRowIds: number[] = [];
         const rowHeight = this.rowController.rowHeight;
+        const pinnedRowsCount = this.rowController.pinnedRows.size;
+        const pinnedRowsHeight = pinnedRowsCount * rowHeight;
+        
+        // Always include pinned rows
+        this.rowController.pinnedRows.forEach(rowId => {
+            visibleRowIds.push(rowId);
+        });
+        
         // return all rows that intersect the visible height range with a number of buffer rows
+        // Adjust for pinned rows at the top
         const minY = this.rowController.verticalOffset - buffer * rowHeight;
-        const maxY = this.rowController.verticalOffset + this.stateController.canvasDisplayHeight + buffer * rowHeight;
+        const maxY = this.rowController.verticalOffset + this.stateController.canvasDisplayHeight - pinnedRowsHeight + buffer * rowHeight;
+        
         this.rowIds.forEach((rowId, index) => {
-            const y = rowHeight * index;
-            if (y + rowHeight >= minY && y <= maxY) {
-                visibleRowIds.push(rowId);
+            if (!this.rowController.isPinned(rowId)) {
+                const y = rowHeight * index;
+                if (y + rowHeight >= minY && y <= maxY) {
+                    visibleRowIds.push(rowId);
+                }
             }
         });
         return visibleRowIds;
+    }
+
+    protected updateRowPositions() {
+        const pinnedRowsCount = this.rowController.pinnedRows.size;
+        let pinnedIndex = 0;
+        
+        this.rowComponents.forEach((rowComponent, rowId) => {
+            if (this.rowController.isPinned(rowId)) {
+                // Position pinned rows at the top
+                const y = pinnedIndex * this.rowController.rowHeight;
+                rowComponent.position.y = y;
+                pinnedIndex++;
+                
+                // Move to pinned components if not already there
+                if (!this.pinnedRowComponents.has(rowId)) {
+                    this.pinnedRowComponents.set(rowId, rowComponent);
+                }
+            } else {
+                // Position regular rows below pinned rows, adjusted for scroll offset
+                const originalIndex = this.rowIds.indexOf(rowId);
+                const y = pinnedRowsCount * this.rowController.rowHeight + 
+                         originalIndex * this.rowController.rowHeight - 
+                         this.rowController.verticalOffset;
+                rowComponent.position.y = y;
+                
+                // Remove from pinned components if it was there
+                this.pinnedRowComponents.delete(rowId);
+            }
+            
+            // Update pin button state
+            rowComponent.updatePinState(this.rowController.isPinned(rowId));
+        });
+    }
+
+    protected handlePinToggle = (rowId: number, pinned: boolean) => {
+        this.rowController.toggleRowPin(rowId);
+        const rowComponent = this.rowComponents.get(rowId);
+        if (rowComponent && rowComponent.model) {
+            rowComponent.model.pinned = pinned;
+        }
     }
 
     protected ensureVisible(rowIndex: number) {
